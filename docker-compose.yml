@@ -1,0 +1,24 @@
+# Single-container deployment: builds the SPA and serves it + the API from
+# FastAPI. Point MONGO_URI at the MongoDB the autobb pipeline writes to.
+#
+# The published port is bound to 127.0.0.1 only — do not expose recon data
+# publicly. Put a reverse proxy / VPN in front for remote access.
+
+services:
+  webui:
+    build: .
+    image: autobb-webui
+    ports:
+      - "127.0.0.1:8000:8000"
+    environment:
+      # host.docker.internal reaches a MongoDB running on the Docker host.
+      MONGO_URI: ${MONGO_URI:-mongodb://host.docker.internal:27017}
+      MONGO_DB: ${MONGO_DB:-autobbdb}
+      DEFAULT_ALIVE_DAYS: ${DEFAULT_ALIVE_DAYS:-30}
+      # Strongly recommended in production:
+      AUTH_TOKEN: ${AUTH_TOKEN:-}
+      # Same-origin in this deployment, so the SPA origin == the API origin.
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://127.0.0.1:8000}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
