@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Chips, HostLink } from "../../components/bits";
 import { DataTable } from "../../components/DataTable";
+import { FilterBuilder } from "../../components/FilterBuilder";
 import { SearchInput } from "../../components/SearchInput";
 import { relativeTime } from "../../lib/format";
 import { useDebounced } from "../../lib/hooks";
@@ -16,9 +17,14 @@ export function SubdomainsTable() {
   const { scopeWindowParams } = useApp();
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
+  const [adv, setAdv] = useState<string | undefined>(undefined);
   const q = useDebounced(search);
+  const advD = useDebounced(adv, 400);
 
-  const filters = useMemo(() => ({ ...scopeWindowParams(), q: q || undefined }), [scopeWindowParams, q]);
+  const filters = useMemo(
+    () => ({ ...scopeWindowParams(), q: q || undefined, filter: advD }),
+    [scopeWindowParams, q, advD],
+  );
 
   const list = usePagedList<DomainDoc>("/domains", filters, [{ id: "last_alive", desc: true }]);
 
@@ -35,23 +41,26 @@ export function SubdomainsTable() {
   );
 
   return (
-    <DataTable
-      columns={columns}
-      data={list.items}
-      total={list.total}
-      page={list.page}
-      onPageChange={list.setPage}
-      pageSize={list.pageSize}
-      sorting={list.sorting}
-      onSortingChange={list.setSorting}
-      isLoading={list.isLoading}
-      isError={list.isError}
-      error={(list.error as Error)?.message}
-      onRowClick={(row) => row.host && navigate(`/host/${encodeURIComponent(row.host)}`)}
-      getRowId={(r, i) => r.id ?? String(i)}
-      emptyTitle="No subdomains"
-      emptyHint="Try widening the alive window or clearing filters."
-      toolbar={<SearchInput value={search} onChange={setSearch} placeholder="Search host…" />}
-    />
+    <div className="space-y-3">
+      <FilterBuilder collection="domains" onChange={setAdv} />
+      <DataTable
+        columns={columns}
+        data={list.items}
+        total={list.total}
+        page={list.page}
+        onPageChange={list.setPage}
+        pageSize={list.pageSize}
+        sorting={list.sorting}
+        onSortingChange={list.setSorting}
+        isLoading={list.isLoading}
+        isError={list.isError}
+        error={(list.error as Error)?.message}
+        onRowClick={(row) => row.host && navigate(`/host/${encodeURIComponent(row.host)}`)}
+        getRowId={(r, i) => r.id ?? String(i)}
+        emptyTitle="No subdomains"
+        emptyHint="Try widening the alive window or clearing filters."
+        toolbar={<SearchInput value={search} onChange={setSearch} placeholder="Search host…" />}
+      />
+    </div>
   );
 }

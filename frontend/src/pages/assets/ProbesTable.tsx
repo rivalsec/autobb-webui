@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Chips, HostLink, StatusCode } from "../../components/bits";
 import { DataTable } from "../../components/DataTable";
+import { FilterBuilder } from "../../components/FilterBuilder";
 import { FilterInput, SearchInput } from "../../components/SearchInput";
 import { formatBytes, relativeTime } from "../../lib/format";
 import { useDebounced } from "../../lib/hooks";
@@ -25,8 +26,10 @@ export function ProbesTable() {
   const [status, setStatus] = useState("");
   const [tech, setTech] = useState("");
   const [tls, setTls] = useState("");
+  const [adv, setAdv] = useState<string | undefined>(undefined);
   const q = useDebounced(search);
   const techD = useDebounced(tech);
+  const advD = useDebounced(adv, 400);
 
   const filters = useMemo(
     () => ({
@@ -35,8 +38,9 @@ export function ProbesTable() {
       status_code: status || undefined,
       tech: techD || undefined,
       tls: tls || undefined,
+      filter: advD,
     }),
-    [scopeWindowParams, q, status, techD, tls],
+    [scopeWindowParams, q, status, techD, tls, advD],
   );
 
   const list = usePagedList<ProbeDoc>("/http_probes", filters, [{ id: "last_alive", desc: true }]);
@@ -66,40 +70,43 @@ export function ProbesTable() {
   );
 
   return (
-    <DataTable
-      columns={columns}
-      data={list.items}
-      total={list.total}
-      page={list.page}
-      onPageChange={list.setPage}
-      pageSize={list.pageSize}
-      sorting={list.sorting}
-      onSortingChange={list.setSorting}
-      isLoading={list.isLoading}
-      isError={list.isError}
-      error={(list.error as Error)?.message}
-      onRowClick={(row) => row.host && navigate(`/host/${encodeURIComponent(row.host)}`)}
-      getRowId={(r, i) => r.id ?? String(i)}
-      emptyTitle="No HTTP services"
-      emptyHint="Try widening the alive window or clearing filters."
-      toolbar={
-        <>
-          <SearchInput value={search} onChange={setSearch} placeholder="host / title / url…" />
-          <FilterInput value={status} onChange={setStatus} placeholder="status" type="number" width="w-24" />
-          <FilterInput value={tech} onChange={setTech} placeholder="tech" width="w-28" />
-          <select
-            value={tls}
-            onChange={(e) => setTls(e.target.value)}
-            className="rounded-md border border-zinc-700 bg-zinc-950 px-2 py-1.5 text-sm text-zinc-100 focus:border-zinc-500 focus:outline-none"
-          >
-            {TLS_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </select>
-        </>
-      }
-    />
+    <div className="space-y-3">
+      <FilterBuilder collection="http_probes" onChange={setAdv} />
+      <DataTable
+        columns={columns}
+        data={list.items}
+        total={list.total}
+        page={list.page}
+        onPageChange={list.setPage}
+        pageSize={list.pageSize}
+        sorting={list.sorting}
+        onSortingChange={list.setSorting}
+        isLoading={list.isLoading}
+        isError={list.isError}
+        error={(list.error as Error)?.message}
+        onRowClick={(row) => row.host && navigate(`/host/${encodeURIComponent(row.host)}`)}
+        getRowId={(r, i) => r.id ?? String(i)}
+        emptyTitle="No HTTP services"
+        emptyHint="Try widening the alive window or clearing filters."
+        toolbar={
+          <>
+            <SearchInput value={search} onChange={setSearch} placeholder="host / title / url…" />
+            <FilterInput value={status} onChange={setStatus} placeholder="status" type="number" width="w-24" />
+            <FilterInput value={tech} onChange={setTech} placeholder="tech" width="w-28" />
+            <select
+              value={tls}
+              onChange={(e) => setTls(e.target.value)}
+              className="rounded-md border border-zinc-700 bg-zinc-950 px-2 py-1.5 text-sm text-zinc-100 focus:border-zinc-500 focus:outline-none"
+            >
+              {TLS_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          </>
+        }
+      />
+    </div>
   );
 }

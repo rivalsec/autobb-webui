@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { HostLink, Mono, StatusCode } from "../../components/bits";
 import { DataTable } from "../../components/DataTable";
+import { FilterBuilder } from "../../components/FilterBuilder";
 import { FilterInput, SearchInput } from "../../components/SearchInput";
 import { formatBytes, relativeTime } from "../../lib/format";
 import { useDebounced } from "../../lib/hooks";
@@ -17,11 +18,13 @@ export function PathsTable() {
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
+  const [adv, setAdv] = useState<string | undefined>(undefined);
   const q = useDebounced(search);
+  const advD = useDebounced(adv, 400);
 
   const filters = useMemo(
-    () => ({ ...scopeWindowParams(), q: q || undefined, status_code: status || undefined }),
-    [scopeWindowParams, q, status],
+    () => ({ ...scopeWindowParams(), q: q || undefined, status_code: status || undefined, filter: advD }),
+    [scopeWindowParams, q, status, advD],
   );
 
   const list = usePagedList<PathDoc>("/http_paths", filters, [{ id: "last_alive", desc: true }]);
@@ -52,28 +55,31 @@ export function PathsTable() {
   );
 
   return (
-    <DataTable
-      columns={columns}
-      data={list.items}
-      total={list.total}
-      page={list.page}
-      onPageChange={list.setPage}
-      pageSize={list.pageSize}
-      sorting={list.sorting}
-      onSortingChange={list.setSorting}
-      isLoading={list.isLoading}
-      isError={list.isError}
-      error={(list.error as Error)?.message}
-      onRowClick={(row) => row.host && navigate(`/host/${encodeURIComponent(row.host)}`)}
-      getRowId={(r, i) => r.id ?? String(i)}
-      emptyTitle="No fuzzed paths"
-      emptyHint="ffuf/httpfuzz has not reported paths in this scope/window."
-      toolbar={
-        <>
-          <SearchInput value={search} onChange={setSearch} placeholder="url / host / path…" />
-          <FilterInput value={status} onChange={setStatus} placeholder="status" type="number" width="w-24" />
-        </>
-      }
-    />
+    <div className="space-y-3">
+      <FilterBuilder collection="http_paths" onChange={setAdv} />
+      <DataTable
+        columns={columns}
+        data={list.items}
+        total={list.total}
+        page={list.page}
+        onPageChange={list.setPage}
+        pageSize={list.pageSize}
+        sorting={list.sorting}
+        onSortingChange={list.setSorting}
+        isLoading={list.isLoading}
+        isError={list.isError}
+        error={(list.error as Error)?.message}
+        onRowClick={(row) => row.host && navigate(`/host/${encodeURIComponent(row.host)}`)}
+        getRowId={(r, i) => r.id ?? String(i)}
+        emptyTitle="No fuzzed paths"
+        emptyHint="ffuf/httpfuzz has not reported paths in this scope/window."
+        toolbar={
+          <>
+            <SearchInput value={search} onChange={setSearch} placeholder="url / host / path…" />
+            <FilterInput value={status} onChange={setStatus} placeholder="status" type="number" width="w-24" />
+          </>
+        }
+      />
+    </div>
   );
 }

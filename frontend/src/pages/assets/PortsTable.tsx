@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { HostLink, Mono } from "../../components/bits";
 import { DataTable } from "../../components/DataTable";
+import { FilterBuilder } from "../../components/FilterBuilder";
 import { FilterInput, SearchInput } from "../../components/SearchInput";
 import { relativeTime } from "../../lib/format";
 import { useDebounced } from "../../lib/hooks";
@@ -17,12 +18,14 @@ export function PortsTable() {
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [port, setPort] = useState("");
+  const [adv, setAdv] = useState<string | undefined>(undefined);
   const q = useDebounced(search);
   const portD = useDebounced(port);
+  const advD = useDebounced(adv, 400);
 
   const filters = useMemo(
-    () => ({ ...scopeWindowParams(), q: q || undefined, port: portD || undefined }),
-    [scopeWindowParams, q, portD],
+    () => ({ ...scopeWindowParams(), q: q || undefined, port: portD || undefined, filter: advD }),
+    [scopeWindowParams, q, portD, advD],
   );
 
   const list = usePagedList<PortDoc>("/ports", filters, [{ id: "last_alive", desc: true }]);
@@ -40,28 +43,31 @@ export function PortsTable() {
   );
 
   return (
-    <DataTable
-      columns={columns}
-      data={list.items}
-      total={list.total}
-      page={list.page}
-      onPageChange={list.setPage}
-      pageSize={list.pageSize}
-      sorting={list.sorting}
-      onSortingChange={list.setSorting}
-      isLoading={list.isLoading}
-      isError={list.isError}
-      error={(list.error as Error)?.message}
-      onRowClick={(row) => row.host && navigate(`/host/${encodeURIComponent(row.host)}`)}
-      getRowId={(r, i) => r.id ?? String(i)}
-      emptyTitle="No open ports"
-      emptyHint="naabu has not reported ports in this scope/window."
-      toolbar={
-        <>
-          <SearchInput value={search} onChange={setSearch} placeholder="host / ip…" />
-          <FilterInput value={port} onChange={setPort} placeholder="port" type="number" width="w-24" />
-        </>
-      }
-    />
+    <div className="space-y-3">
+      <FilterBuilder collection="ports" onChange={setAdv} />
+      <DataTable
+        columns={columns}
+        data={list.items}
+        total={list.total}
+        page={list.page}
+        onPageChange={list.setPage}
+        pageSize={list.pageSize}
+        sorting={list.sorting}
+        onSortingChange={list.setSorting}
+        isLoading={list.isLoading}
+        isError={list.isError}
+        error={(list.error as Error)?.message}
+        onRowClick={(row) => row.host && navigate(`/host/${encodeURIComponent(row.host)}`)}
+        getRowId={(r, i) => r.id ?? String(i)}
+        emptyTitle="No open ports"
+        emptyHint="naabu has not reported ports in this scope/window."
+        toolbar={
+          <>
+            <SearchInput value={search} onChange={setSearch} placeholder="host / ip…" />
+            <FilterInput value={port} onChange={setPort} placeholder="port" type="number" width="w-24" />
+          </>
+        }
+      />
+    </div>
   );
 }
