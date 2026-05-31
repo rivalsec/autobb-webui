@@ -8,17 +8,33 @@ with no UI. This project visualises its asset inventory and findings. It **does
 not** trigger scans or edit configuration — the pipeline remains the sole writer;
 the UI only reads.
 
-Implements [`autobb-webui-spec.md`](./autobb-webui-spec.md) (v1).
+---
 
+## Try the demo (one line)
+
+No clone, no build — pulls a pre-seeded MongoDB and the UI, both as published
+images, and serves them on loopback:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/rivalsec/autobb-webui/main/demo/docker-compose.yml \
+  | docker compose -f - -p autobb-demo up
 ```
-            ┌─────────────┐      reads       ┌──────────────┐
-  Browser ──│ React (SPA) │──HTTP/JSON──▶ │ FastAPI API  │──▶ MongoDB (autobb DB)
-            └─────────────┘                  └──────────────┘        ▲
-                                                                     │ writes
-                                                           ┌──────────────────┐
-                                                           │ autobb pipeline  │
-                                                           └──────────────────┘
+
+Then open <http://127.0.0.1:8000>. `Ctrl-C` stops it; nothing persists (no
+volume), so each run reseeds with fresh data.
+
+The dataset is **synthetic** — fictional companies on the reserved
+`.test`/`.example` TLDs, no real recon. To try it from a checkout instead (and
+build the images locally):
+
+```bash
+docker compose -f demo/docker-compose.build.yml -p autobb-demo up --build
 ```
+
+See [`demo/`](demo/) for the seed generator and image definitions. The
+published images are built by the [`Publish demo images`](.github/workflows/docker-publish.yml)
+workflow; make both GHCR packages **public** so the one-liner can pull them
+without auth.
 
 ---
 
@@ -165,5 +181,4 @@ This dashboard exposes target reconnaissance data. Even read-only:
 ## Not in v1 (deferred to v2)
 
 Triggering/scheduling scans, editing config/scopes/templates, multi-user RBAC,
-triage workflow (writing finding status), and time-based asset diffing. See
-§8 of the spec.
+triage workflow (writing finding status)...

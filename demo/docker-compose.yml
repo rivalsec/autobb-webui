@@ -1,0 +1,41 @@
+# AutoBB Web UI — one-command demo.
+#
+# Brings up a pre-seeded MongoDB (synthetic data) and the web UI, both from
+# published images, so nothing needs to be cloned or built. Run it with:
+#
+#   curl -fsSL https://raw.githubusercontent.com/rivalsec/autobb-webui/main/demo/docker-compose.yml \
+#     | docker compose -f - -p autobb-demo up
+#
+# then open http://127.0.0.1:8000  (Ctrl-C to stop).
+#
+# The data is fabricated (fictional companies on reserved .test/.example TLDs).
+# The published port is bound to loopback only. There is no volume, so every
+# run starts from a fresh, freshly-dated seed.
+name: autobb-demo
+
+services:
+  db:
+    image: ghcr.io/rivalsec/autobb-demo-db:latest
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+  webui:
+    image: ghcr.io/rivalsec/autobb-webui:latest
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      MONGO_URI: mongodb://db:27017
+      MONGO_DB: autobbdb
+      # Demo: disable the alive-window filter so all seeded data is visible
+      # regardless of age, and leave auth open (the port is loopback-only).
+      DEFAULT_ALIVE_DAYS: "0"
+      AUTH_TOKEN: ""
+      CORS_ORIGINS: http://127.0.0.1:8000
+    ports:
+      - "127.0.0.1:8000:8000"
+    restart: unless-stopped

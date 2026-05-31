@@ -1,0 +1,39 @@
+# Local build of the demo — same as docker-compose.yml but builds both images
+# from this checkout instead of pulling them from GHCR. Use it to try the demo
+# before publishing, or to iterate on seed.js / the Dockerfiles:
+#
+#   docker compose -f demo/docker-compose.build.yml -p autobb-demo up --build
+#
+# then open http://127.0.0.1:8000  (Ctrl-C to stop).
+name: autobb-demo
+
+services:
+  db:
+    build:
+      context: .
+      dockerfile: db.Dockerfile
+    image: autobb-demo-db:local
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+  webui:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    image: autobb-webui:local
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      MONGO_URI: mongodb://db:27017
+      MONGO_DB: autobbdb
+      DEFAULT_ALIVE_DAYS: "0"
+      AUTH_TOKEN: ""
+      CORS_ORIGINS: http://127.0.0.1:8000
+    ports:
+      - "127.0.0.1:8000:8000"
+    restart: unless-stopped

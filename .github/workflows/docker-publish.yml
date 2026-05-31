@@ -1,0 +1,68 @@
+# Build and publish the demo images to GitHub Container Registry (GHCR).
+#
+# Produces two public images that demo/docker-compose.yml pulls:
+#   ghcr.io/<owner>/autobb-webui    — the FastAPI + SPA app
+#   ghcr.io/<owner>/autobb-demo-db  — MongoDB pre-seeded with synthetic data
+#
+# On first publish, set both packages to Public in the repo's Packages
+# settings so the one-liner can pull them without authentication.
+name: Publish demo images
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
+
+concurrency:
+  group: docker-publish-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        include:
+          - image: autobb-webui
+            context: .
+            dockerfile: Dockerfile
+          - image: autobb-demo-db
+            context: demo
+            dockerfile: demo/db.Dockerfile
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Image metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}
+          tags: |
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
