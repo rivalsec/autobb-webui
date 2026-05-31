@@ -8,7 +8,7 @@ with no UI. This project visualises its asset inventory and findings. It **does
 not** trigger scans or edit configuration — the pipeline remains the sole writer;
 the UI only reads.
 
----
+![alt text](image.png)
 
 ## Try the demo (one line)
 
