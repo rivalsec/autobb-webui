@@ -1,4 +1,5 @@
 import clsx from "clsx";
+import { ExternalLink } from "lucide-react";
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { statusTone } from "../lib/format";
@@ -13,6 +14,22 @@ export function HostLink({ host, className }: { host?: string | null; className?
     >
       {host}
     </Link>
+  );
+}
+
+export function ExtLink({ url, className }: { url?: string | null; className?: string }) {
+  if (!url) return <span className="text-zinc-500">—</span>;
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noreferrer"
+      onClick={(e) => e.stopPropagation()}
+      className={clsx("inline-flex items-center gap-1 break-all font-mono text-xs text-sky-400 hover:underline", className)}
+    >
+      {url}
+      <ExternalLink className="h-3 w-3 shrink-0" />
+    </a>
   );
 }
 

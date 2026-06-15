@@ -110,6 +110,19 @@ export interface Finding extends BaseDoc {
   path?: string;
 }
 
+export interface SecretDoc extends BaseDoc {
+  host?: string;
+  url?: string;
+  rule_id?: string;
+  severity?: Severity;
+  description?: string;
+  match?: string;
+  secret?: string;
+  secret_sha256?: string;
+  file?: string;
+  line?: number;
+}
+
 export interface AlertDoc extends BaseDoc {
   source?: string;
   created_at?: string;
@@ -125,4 +138,5 @@ export interface HostDetail {
   ports: PortDoc[];
   findings: Finding[];
   paths: PathDoc[];
+  secrets: SecretDoc[];
 }

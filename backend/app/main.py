@@ -16,7 +16,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from .auth import require_auth
 from .config import settings
 from .db import close, connect
-from .routers import alerts, assets, findings, host, meta, schema, scopes, stats
+from .routers import alerts, assets, findings, host, meta, schema, scopes, secrets, stats
 
 
 @asynccontextmanager
@@ -51,6 +51,7 @@ app.include_router(stats.router, dependencies=_guard)
 app.include_router(schema.router, dependencies=_guard)
 app.include_router(assets.router, dependencies=_guard)
 app.include_router(findings.router, dependencies=_guard)
+app.include_router(secrets.router, dependencies=_guard)
 app.include_router(host.router, dependencies=_guard)
 app.include_router(alerts.router, dependencies=_guard)
 

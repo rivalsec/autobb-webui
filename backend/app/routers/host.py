@@ -10,6 +10,7 @@ from ..db import (
     NUCLEI_HITS,
     NUCLEI_PASSIVE_HITS,
     PORTS,
+    SECRET_HITS,
     get_db,
 )
 from ..serializers import serialize_doc, serialize_docs
@@ -26,13 +27,14 @@ async def host_detail(host: str):
     async def find(col: str, q: dict):
         return await db[col].find(q).limit(_FAN_LIMIT).to_list(length=_FAN_LIMIT)
 
-    domain_doc, probes, ports, paths, active, passive = await asyncio.gather(
+    domain_doc, probes, ports, paths, active, passive, secrets = await asyncio.gather(
         db[DOMAINS].find_one({"host": host}),
         find(HTTP_PROBES, {"host": host}),
         find(PORTS, {"host": host}),
         find(HTTP_PATHS, {"host": host}),
         find(NUCLEI_HITS, {"host": host}),
         find(NUCLEI_PASSIVE_HITS, {"host": host}),
+        find(SECRET_HITS, {"host": host}),
     )
 
     for d in active:
@@ -50,4 +52,5 @@ async def host_detail(host: str):
         "ports": serialize_docs(ports),
         "findings": serialize_docs(findings),
         "paths": serialize_docs(paths),
+        "secrets": serialize_docs(secrets),
     }

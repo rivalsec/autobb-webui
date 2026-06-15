@@ -27,6 +27,9 @@ if (db.domains.estimatedDocumentCount() > 0) {
     return c.slice(0, k);
   };
   const ip = () => `${rint(1, 223)}.${rint(0, 255)}.${rint(0, 255)}.${rint(1, 254)}`;
+  const ALNUM = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  const tok = (n) => Array.from({ length: n }, () => ALNUM[rint(0, ALNUM.length - 1)]).join("");
+  const hex = (n) => Array.from({ length: n }, () => "0123456789abcdef"[rint(0, 15)]).join("");
   // add_date: spread over the last ~60 days; ~25% land inside the last 7 days
   // so the "new this week" counters are non-zero. last_alive stays recent so
   // everything is inside the default 30-day alive window.
@@ -82,12 +85,26 @@ if (db.domains.estimatedDocumentCount() > 0) {
     { id: "ssl-dns-names", name: "TLS Certificate SAN Enumeration", severity: "info", tags: ["ssl", "tls"] },
   ];
 
+  // gitleaks-style secret rules. `gen` fabricates a value of the right shape;
+  // `key`/`suffix` wrap it into the matched text the scanner would have flagged.
+  const SECRET_RULES = [
+    { id: "aws-access-token", desc: "AWS Access Key", severity: "critical", key: 'aws_access_key_id = "', suffix: '"', gen: () => "AKIA" + tok(16).toUpperCase() },
+    { id: "private-key", desc: "Private Key", severity: "critical", key: "", suffix: "", gen: () => "-----BEGIN RSA PRIVATE KEY-----\\nMIIEpAIBAAKCAQEA" + tok(32) },
+    { id: "github-pat", desc: "GitHub Personal Access Token", severity: "high", key: "token: ", suffix: "", gen: () => "ghp_" + tok(36) },
+    { id: "slack-webhook-url", desc: "Slack Webhook", severity: "high", key: "", suffix: "", gen: () => "https://hooks.slack.com/services/T" + tok(8).toUpperCase() + "/B" + tok(8).toUpperCase() + "/" + tok(24) },
+    { id: "stripe-access-token", desc: "Stripe API Key", severity: "high", key: 'STRIPE_KEY="', suffix: '"', gen: () => "sk_live_" + tok(24) },
+    { id: "generic-api-key", desc: "Generic API Key", severity: "medium", key: 'api_key: "', suffix: '"', gen: () => tok(32) },
+    { id: "jwt", desc: "JSON Web Token", severity: "low", key: "Authorization: Bearer ", suffix: "", gen: () => "eyJ" + tok(18) + "." + tok(40) + "." + tok(43) },
+  ];
+  const SECRET_PATHS = ["/static/js/app.js", "/.env", "/config.json", "/api/v1/config", "/main.bundle.js", "/.git/config"];
+
   const domains = [];
   const probes = [];
   const ports = [];
   const httpPaths = [];
   const activeHits = [];
   const passiveHits = [];
+  const secretHits = [];
 
   for (const sc of SCOPES) {
     const subs = sample(SUBS, rint(14, 22));
@@ -166,6 +183,28 @@ if (db.domains.estimatedDocumentCount() > 0) {
             last_alive: aliveDate(),
           });
         }
+
+        // Leaked secret in a saved response on a subset of HTTP services.
+        if (chance(0.18)) {
+          const r = pick(SECRET_RULES);
+          const secret = r.gen();
+          const spath = pick(SECRET_PATHS);
+          secretHits.push({
+            scope: sc.name,
+            host,
+            rule_id: r.id,
+            severity: r.severity,
+            description: r.desc,
+            secret,
+            secret_sha256: hex(64),
+            match: `${r.key}${secret}${r.suffix}`,
+            line: rint(1, 600),
+            file: `responses/${host}/${hex(8)}.txt`,
+            url: `${url}${spath}`,
+            add_date: addDate(),
+            last_alive: aliveDate(),
+          });
+        }
       }
 
       // Findings on a subset of hosts.
@@ -238,11 +277,12 @@ if (db.domains.estimatedDocumentCount() > 0) {
   db.http_paths.insertMany(httpPaths);
   db.nuclei_hits.insertMany(activeHits);
   db.nuclei_passive_hits.insertMany(passiveHits);
+  if (secretHits.length) db.secret_hits.insertMany(secretHits);
   db.alerts.insertMany(alerts);
 
   print(
     `autobb-demo seeded: ${domains.length} domains, ${probes.length} probes, ` +
     `${ports.length} ports, ${httpPaths.length} paths, ${activeHits.length} active + ` +
-    `${passiveHits.length} passive findings, ${alerts.length} alerts.`
+    `${passiveHits.length} passive findings, ${secretHits.length} secrets, ${alerts.length} alerts.`
   );
 }

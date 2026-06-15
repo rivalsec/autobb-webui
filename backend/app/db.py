@@ -14,6 +14,7 @@ PORTS = "ports"
 HTTP_PATHS = "http_paths"
 NUCLEI_HITS = "nuclei_hits"
 NUCLEI_PASSIVE_HITS = "nuclei_passive_hits"
+SECRET_HITS = "secret_hits"
 ALERTS = "alerts"
 
 # Collections that carry the standard (scope, add_date, last_alive) temporal model.

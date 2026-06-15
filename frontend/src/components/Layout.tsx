@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import { Activity, Bell, LayoutGrid, LogOut, Radar, ShieldCheck } from "lucide-react";
+import { Activity, Bell, KeyRound, LayoutGrid, LogOut, Radar, ShieldCheck } from "lucide-react";
 import { NavLink, Outlet } from "react-router-dom";
 import { useApp } from "../state/AppContext";
 import { AliveWindowToggle } from "./AliveWindowToggle";
@@ -9,6 +9,7 @@ const NAV = [
   { to: "/", label: "Overview", icon: LayoutGrid, end: true },
   { to: "/assets", label: "Assets", icon: LayoutGrid, end: false },
   { to: "/findings", label: "Findings", icon: ShieldCheck, end: false },
+  { to: "/secrets", label: "Secrets", icon: KeyRound, end: false },
   { to: "/alerts", label: "Alerts", icon: Bell, end: false },
 ];
 

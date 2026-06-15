@@ -1,13 +1,16 @@
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Fingerprint, Globe, Network, ServerCog, ShieldAlert, FileSearch } from "lucide-react";
-import type { ReactNode } from "react";
+import { ArrowLeft, Fingerprint, Globe, KeyRound, Network, ServerCog, ShieldAlert, FileSearch } from "lucide-react";
+import { useState, type ReactNode } from "react";
 import { Link, useParams } from "react-router-dom";
 import { apiGet } from "../lib/api";
 import { formatBytes, formatDate, relativeTime, toArray } from "../lib/format";
-import type { HostDetail as HostDetailData } from "../lib/types";
+import type { Finding, HostDetail as HostDetailData, PathDoc, SecretDoc } from "../lib/types";
 import { Chips, Mono, StatusCode } from "../components/bits";
 import { EmptyState } from "../components/EmptyState";
+import { FindingDetail } from "../components/FindingDetail";
 import { LoadingSkeleton } from "../components/LoadingSkeleton";
+import { PathDetail } from "../components/PathDetail";
+import { SecretDetail } from "../components/SecretDetail";
 import { SeverityBadge } from "../components/SeverityBadge";
 
 export function HostDetail() {
@@ -40,6 +43,7 @@ export function HostDetail() {
         <>
           <DomainCard data={data} />
           <FindingsSection data={data} />
+          <SecretsSection data={data} />
           <ProbesSection data={data} />
           <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
             <PortsSection data={data} />
@@ -93,26 +97,59 @@ function Meta({ label, children }: { label: string; children: ReactNode }) {
 }
 
 function FindingsSection({ data }: { data: HostDetailData }) {
+  const [selected, setSelected] = useState<Finding | null>(null);
   if (data.findings.length === 0) return null;
   return (
     <Section title="Findings" icon={<ShieldAlert className="h-4 w-4 text-amber-400" />} count={data.findings.length}>
       <ul className="divide-y divide-zinc-800/60">
         {data.findings.map((f, i) => (
-          <li key={f.id ?? i} className="flex items-start gap-3 px-4 py-2 text-sm">
-            <SeverityBadge severity={f.severity ?? f.info?.severity} />
-            <div className="min-w-0 flex-1">
-              <div className="font-medium text-zinc-200">
-                {f.info?.name || f["template-id"]}
-                {f.passive && <span className="ml-2 rounded bg-zinc-800 px-1.5 py-0.5 text-[10px] uppercase text-zinc-400">passive</span>}
+          <li key={f.id ?? i}>
+            <button
+              onClick={() => setSelected(f)}
+              className="flex w-full items-start gap-3 px-4 py-2 text-left text-sm hover:bg-zinc-800/30"
+            >
+              <SeverityBadge severity={f.severity ?? f.info?.severity} />
+              <div className="min-w-0 flex-1">
+                <div className="font-medium text-zinc-200">
+                  {f.info?.name || f["template-id"]}
+                  {f.passive && <span className="ml-2 rounded bg-zinc-800 px-1.5 py-0.5 text-[10px] uppercase text-zinc-400">passive</span>}
+                </div>
+                <div className="truncate font-mono text-xs text-zinc-500">{f["matched-at"]}</div>
               </div>
-              <div className="break-all font-mono text-xs text-zinc-500">{f["matched-at"]}</div>
-              {toArray(f["extracted-results"]).length > 0 && (
-                <pre className="mt-1 overflow-x-auto rounded bg-zinc-900 p-1.5 font-mono text-xs text-emerald-300">{toArray(f["extracted-results"]).join("\n")}</pre>
-              )}
-            </div>
+              <span className="shrink-0 text-xs text-zinc-500">{relativeTime(f.last_alive)}</span>
+            </button>
           </li>
         ))}
       </ul>
+      {selected && <FindingDetail finding={selected} onClose={() => setSelected(null)} />}
+    </Section>
+  );
+}
+
+function SecretsSection({ data }: { data: HostDetailData }) {
+  const [selected, setSelected] = useState<SecretDoc | null>(null);
+  if (data.secrets.length === 0) return null;
+  return (
+    <Section title="Secrets" icon={<KeyRound className="h-4 w-4 text-rose-400" />} count={data.secrets.length}>
+      <ul className="divide-y divide-zinc-800/60">
+        {data.secrets.map((s, i) => (
+          <li key={s.id ?? i}>
+            <button
+              onClick={() => setSelected(s)}
+              className="flex w-full items-start gap-3 px-4 py-2 text-left text-sm hover:bg-zinc-800/30"
+            >
+              <SeverityBadge severity={s.severity} />
+              <div className="min-w-0 flex-1">
+                <div className="font-mono text-zinc-200">{s.rule_id || "secret"}</div>
+                {s.description && <div className="truncate text-xs text-zinc-500">{s.description}</div>}
+                {s.match && <div className="truncate font-mono text-xs text-amber-300/90">{s.match}</div>}
+              </div>
+              <span className="shrink-0 text-xs text-zinc-500">{relativeTime(s.last_alive)}</span>
+            </button>
+          </li>
+        ))}
+      </ul>
+      {selected && <SecretDetail secret={selected} onClose={() => setSelected(null)} />}
     </Section>
   );
 }
@@ -171,6 +208,7 @@ function PortsSection({ data }: { data: HostDetailData }) {
 }
 
 function PathsSection({ data }: { data: HostDetailData }) {
+  const [selected, setSelected] = useState<PathDoc | null>(null);
   return (
     <Section title="Fuzzed paths" icon={<FileSearch className="h-4 w-4 text-zinc-400" />} count={data.paths.length}>
       {data.paths.length === 0 ? (
@@ -178,15 +216,21 @@ function PathsSection({ data }: { data: HostDetailData }) {
       ) : (
         <ul className="divide-y divide-zinc-800/60">
           {data.paths.map((p, i) => (
-            <li key={p.id ?? i} className="flex items-center gap-3 px-4 py-2 text-sm">
-              <StatusCode code={p.status_code} />
-              <Mono>{p.path}</Mono>
-              {p.redirect && <span className="text-xs text-zinc-500">→ {p.redirect}</span>}
-              <span className="ml-auto text-xs tabular-nums text-zinc-500">{formatBytes(p.content_length)}</span>
+            <li key={p.id ?? i}>
+              <button
+                onClick={() => setSelected(p)}
+                className="flex w-full items-center gap-3 px-4 py-2 text-left text-sm hover:bg-zinc-800/30"
+              >
+                <StatusCode code={p.status_code} />
+                <Mono>{p.path}</Mono>
+                {p.redirect && <span className="truncate text-xs text-zinc-500">→ {p.redirect}</span>}
+                <span className="ml-auto shrink-0 text-xs tabular-nums text-zinc-500">{formatBytes(p.content_length)}</span>
+              </button>
             </li>
           ))}
         </ul>
       )}
+      {selected && <PathDetail path={selected} onClose={() => setSelected(null)} />}
     </Section>
   );
 }

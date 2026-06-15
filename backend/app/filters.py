@@ -17,7 +17,7 @@ from datetime import datetime, timedelta
 
 from fastapi import HTTPException
 
-from .db import DOMAINS, HTTP_PATHS, HTTP_PROBES, PORTS
+from .db import DOMAINS, HTTP_PATHS, HTTP_PROBES, PORTS, SECRET_HITS
 
 MAX_DEPTH = 5
 MAX_CONDITIONS = 50
@@ -97,6 +97,20 @@ SCHEMAS: dict[str, dict[str, dict]] = {
         "host": _f("Host", "string"),
         "ip": _f("IP", "string"),
         "port": _f("Port", "number"),
+        "scope": _f("Scope", "string"),
+        "add_date": _f("First seen", "date"),
+        "last_alive": _f("Last alive", "date"),
+    },
+    SECRET_HITS: {
+        "host": _f("Host", "string"),
+        "url": _f("URL", "string"),
+        "rule_id": _f("Rule", "string"),
+        "severity": _f("Severity", "string"),
+        "description": _f("Description", "string"),
+        "match": _f("Match", "string"),
+        "secret": _f("Secret", "string"),
+        "file": _f("File", "string"),
+        "line": _f("Line", "number"),
         "scope": _f("Scope", "string"),
         "add_date": _f("First seen", "date"),
         "last_alive": _f("Last alive", "date"),
