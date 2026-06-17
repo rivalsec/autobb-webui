@@ -4,9 +4,11 @@ import type { Params } from "../lib/api";
 
 // The two persistent global controls (spec §5.2): scope + alive-window.
 export type WindowKey = "7d" | "30d" | "all";
+export type Theme = "dark" | "light";
 
 const SCOPE_KEY = "autobb.scope";
 const WINDOW_KEY = "autobb.window";
+const THEME_KEY = "autobb.theme";
 
 const WINDOW_DAYS: Record<WindowKey, number> = { "7d": 7, "30d": 30, all: 0 };
 
@@ -19,6 +21,9 @@ interface AppContextValue {
   aliveDays: number;
   /** scope + alive-window as query params for asset/stat endpoints. */
   scopeWindowParams: () => Params;
+  // theme
+  theme: Theme;
+  toggleTheme: () => void;
   // auth
   authReady: boolean;
   authRequired: boolean;
@@ -36,6 +41,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [windowKey, setWindowKeyState] = useState<WindowKey>(
     () => (localStorage.getItem(WINDOW_KEY) as WindowKey) || "30d",
   );
+  const [theme, setThemeState] = useState<Theme>(
+    () => (localStorage.getItem(THEME_KEY) as Theme) || "dark",
+  );
+
+  useEffect(() => {
+    if (theme === "light") {
+      document.documentElement.classList.add("light");
+    } else {
+      document.documentElement.classList.remove("light");
+    }
+  }, [theme]);
 
   const [authReady, setAuthReady] = useState(false);
   const [authRequired, setAuthRequired] = useState(false);
@@ -78,6 +94,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     localStorage.setItem(WINDOW_KEY, w);
   };
 
+  const toggleTheme = () => {
+    const next: Theme = theme === "dark" ? "light" : "dark";
+    setThemeState(next);
+    localStorage.setItem(THEME_KEY, next);
+  };
+
   const login = async (token: string): Promise<boolean> => {
     setToken(token);
     const ok = await checkToken();
@@ -106,6 +128,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         else p.alive_days = aliveDays;
         return p;
       },
+      theme,
+      toggleTheme,
       authReady,
       authRequired,
       authed,
@@ -113,7 +137,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       logout,
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scope, windowKey, authReady, authRequired, authed]);
+  }, [scope, windowKey, theme, authReady, authRequired, authed]);
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }

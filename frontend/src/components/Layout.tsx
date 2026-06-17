@@ -4,6 +4,7 @@ import { NavLink, Outlet } from "react-router-dom";
 import { useApp } from "../state/AppContext";
 import { AliveWindowToggle } from "./AliveWindowToggle";
 import { ScopeSelect } from "./ScopeSelect";
+import { ThemeToggle } from "./ThemeToggle";
 
 const NAV = [
   { to: "/", label: "Overview", icon: LayoutGrid, end: true },
@@ -44,6 +45,7 @@ export function Layout() {
           </nav>
 
           <div className="ml-auto flex items-center gap-2">
+            <ThemeToggle />
             <ScopeSelect />
             <AliveWindowToggle />
             {authRequired && (
